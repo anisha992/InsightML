@@ -45,5 +45,3 @@ An intuitive web application built with Streamlit for training, analyzing, and d
 
 ---
 
-## 📁 **Project Structure**
-
