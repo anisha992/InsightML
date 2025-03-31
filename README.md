@@ -15,7 +15,7 @@ An intuitive web application built with Streamlit for training, analyzing, and d
   - Support Vector Machine (SVM)
   - XGBoost
 - Customizable model parameters for fine-tuning.
-- Automatic model saving, versioning, and tracking for reproducibility.
+- Automatic model saving, and tracking for reproducibility.
 - Visual performance metrics to assess model accuracy and effectiveness.
 
 ### 🔮 **Prediction**
