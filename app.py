@@ -15,7 +15,7 @@ if "page" not in st.session_state:
 
 # Sidebar navigation
 with st.sidebar:
-    st.title("🤖 Decipher")
+    st.title("InsightML")
     st.markdown("---")
 
     # Navigation
