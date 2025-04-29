@@ -1,16 +1,5 @@
 import streamlit as st
 from pages import Home, Dataset_Load, Train_Models, Upload_Predict, Visualization
-# With this native alternative:
-def option_menu(menu_title, options, icons=None, default_index=0):
-    with st.sidebar:
-        st.markdown(f"## {menu_title}")
-        selection = st.radio(
-            "Navigation",
-            options,
-            index=default_index,
-            format_func=lambda x: f"{icons[options.index(x)]} {x}" if icons else x
-        )
-    return selection
 
 # Set page config with new theme
 st.set_page_config(
