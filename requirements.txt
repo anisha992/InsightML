@@ -11,4 +11,4 @@ numpy==1.26.3
 plotly==5.18.0
 pathlib==1.0.1
 scipy==1.12.0
-treamlit-option-menu>=0.2.0
+streamlit-option-menu>=0.2.0
