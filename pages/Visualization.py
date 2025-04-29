@@ -12,6 +12,35 @@ import seaborn as sns
 from sklearn.metrics import classification_report, confusion_matrix, roc_curve, auc
 from scipy import stats
 import joblib
+from sklearn.preprocessing import LabelEncoder
+
+def preprocess_data(df, categorical_features=None):
+    """Handle data preprocessing including categorical encoding and type conversion"""
+    if categorical_features is None:
+        categorical_features = []
+    
+    # Convert string booleans to actual booleans
+    for col in df.select_dtypes(include='object').columns:
+        if df[col].str.lower().isin(['true','false']).any():
+            df[col] = df[col].str.lower() == 'true'
+    
+    # Encode categorical features
+    label_encoders = {}
+    for col in categorical_features:
+        if col in df.columns:
+            le = LabelEncoder()
+            df[col] = le.fit_transform(df[col].astype(str))
+            label_encoders[col] = le
+    
+    # Convert all numeric columns
+    for col in df.columns:
+        if col not in categorical_features:
+            try:
+                df[col] = pd.to_numeric(df[col], errors='coerce')
+            except:
+                pass
+    
+    return df, label_encoders
 
 def show():
     st.title("Model Visualization & Monitoring")
@@ -52,8 +81,12 @@ def show():
             model = model_data['model']
             feature_names = model_data['feature_names']
             target_column = model_data['target_column']
+            categorical_features = model_data.get('categorical_features', [])
 
             df = pd.read_csv(datasets_dir / selected_dataset)
+            
+            # Preprocess data
+            df_processed, _ = preprocess_data(df.copy(), categorical_features)
 
             # Get model information
             model_info = get_model_info(models_dir / selected_model)
@@ -65,8 +98,8 @@ def show():
                 st.write("Model Type:", model_info["type"])
                 st.write("Parameters:", model_info["parameters"])
             with col2:
-                st.write("Dataset Shape:", df.shape)
-                st.write("Features:", len(df.columns))
+                st.write("Dataset Shape:", df_processed.shape)
+                st.write("Features:", len(df_processed.columns))
 
             # Feature Importance
             if model_info["feature_importance"] is not None:
@@ -82,7 +115,7 @@ def show():
             # SHAP Values
             st.subheader("SHAP Values")
             try:
-                X = df[feature_names]
+                X = df_processed[feature_names]
                 explainer = shap.Explainer(model, X)
                 shap_values = explainer(X)
 
@@ -98,69 +131,43 @@ def show():
             except Exception as e:
                 st.warning(f"Could not compute SHAP values: {str(e)}")
 
-            # Data Quality Analysis
-            st.subheader("Data Quality Analysis")
-            col1, col2 = st.columns(2)
-            with col1:
-                st.write("Missing Values:")
-                missing_values = df.isnull().sum()
-                fig = px.bar(x=missing_values.index, y=missing_values.values)
-                st.plotly_chart(fig)
-            with col2:
-                st.write("Data Types:")
-                st.write(df.dtypes)
-
-            # Feature Distributions
-            st.subheader("Feature Distributions")
-            for column in feature_names:
-                fig = px.histogram(df, x=column, color=target_column, marginal="box")
-                st.plotly_chart(fig)
-
             # Correlation Matrix
             st.subheader("Feature Correlation Matrix")
-            corr_matrix = df[feature_names + [target_column]].corr()
-            fig = px.imshow(corr_matrix, color_continuous_scale="RdBu")
-            st.plotly_chart(fig)
+            try:
+                corr_matrix = df_processed[feature_names + [target_column]].corr()
+                fig = px.imshow(corr_matrix, 
+                              color_continuous_scale="RdBu",
+                              zmin=-1, 
+                              zmax=1)
+                st.plotly_chart(fig)
+            except Exception as e:
+                st.error(f"Could not generate correlation matrix: {str(e)}")
+                st.error("Please check your data types and missing values.")
 
             # Model Performance Metrics
             st.subheader("Model Performance Metrics")
-            X = df[feature_names]
-            y_true = df[target_column]
-            y_pred = model.predict(X)
-
-            # Classification Report
-            report = classification_report(y_true, y_pred)
-            st.text(report)
-
-            # Confusion Matrix
-            cm = confusion_matrix(y_true, y_pred)
-            fig, ax = plt.subplots(figsize=(8, 6))
-            sns.heatmap(cm, annot=True, fmt='d', ax=ax)
-            st.pyplot(fig)
-
-            # ROC Curve (if applicable)
             try:
-                y_pred_proba = model.predict_proba(X)[:, 1]
-                fpr, tpr, _ = roc_curve(y_true, y_pred_proba)
-                roc_auc = auc(fpr, tpr)
+                X = df_processed[feature_names]
+                y_true = df_processed[target_column]
+                y_pred = model.predict(X)
 
-                fig = go.Figure()
-                fig.add_trace(go.Scatter(x=fpr, y=tpr, mode='lines', name=f'ROC curve (AUC = {roc_auc:.2f})'))
-                fig.add_trace(go.Scatter(x=[0, 1], y=[0, 1], mode='lines', name='Random'))
-                fig.update_layout(title='ROC Curve', xaxis_title='False Positive Rate', yaxis_title='True Positive Rate')
-                st.plotly_chart(fig)
+                # Classification Report
+                report = classification_report(y_true, y_pred)
+                st.text(report)
+
+                # Confusion Matrix
+                cm = confusion_matrix(y_true, y_pred)
+                fig, ax = plt.subplots(figsize=(8, 6))
+                sns.heatmap(cm, annot=True, fmt='d', ax=ax)
+                st.pyplot(fig)
             except Exception as e:
-                st.warning(f"Could not generate ROC curve: {str(e)}")
-
-            # Statistical Tests
-            st.subheader("Statistical Analysis")
-            for column in feature_names:
-                if df[column].dtype in ['int64', 'float64']:
-                    # Perform t-test between feature and target
-                    t_stat, p_value = stats.ttest_ind(df[df[target_column] == 0][column],
-                                                    df[df[target_column] == 1][column])
-                    st.write(f"{column}: t-statistic = {t_stat:.4f}, p-value = {p_value:.4f}")
+                st.error(f"Could not compute performance metrics: {str(e)}")
 
         except Exception as e:
             st.error(f"Error processing model and data: {str(e)}")
-            st.error("Please ensure the model and dataset are compatible.")
+            st.markdown("""
+            *Common Solutions:*
+            1. Check for incompatible data types in your dataset
+            2. Ensure all required features are present
+            3. Verify there are no unexpected string values in numeric columns
+            """)

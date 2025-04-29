@@ -33,6 +33,20 @@ def show():
         # Load the selected dataset
         df = pd.read_csv(datasets_dir / selected_dataset)
 
+        # Preprocess the Titanic dataset (cleaning, encoding, etc.)
+        columns_to_drop = ['Name', 'Ticket', 'Cabin']
+        for col in columns_to_drop:
+            if col in df.columns:
+                df = df.drop(columns=col)
+
+        if 'Sex' in df.columns:
+            df['Sex'] = df['Sex'].map({'male': 0, 'female': 1})
+
+        if 'Embarked' in df.columns:
+            df['Embarked'] = df['Embarked'].map({'C': 0, 'Q': 1, 'S': 2})
+
+        df = df.dropna()
+
         # Display dataset info
         col1, col2 = st.columns(2)
         with col1:
