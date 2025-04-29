@@ -1,6 +1,5 @@
 import streamlit as st
 from pages import Home, Dataset_Load, Train_Models, Upload_Predict, Visualization
-from streamlit_option_menu import option_menu  # Requires pip install streamlit-option-menu
 
 # Set page config with new theme
 st.set_page_config(
